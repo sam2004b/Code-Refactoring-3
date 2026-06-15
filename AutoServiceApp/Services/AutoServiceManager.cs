@@ -235,14 +235,17 @@ public class AutoServiceManager
 
     public void ChangeOrderStatus(RepairOrder order, string newStatus, string notificationType)
     {
-        _selectedOrder = order;
         StatusHelper.MarkStatus(order, newStatus);
-        if (newStatus == "Ready")
-            order.Cost = CalculateOrderCost(order, true, order.PaymentMethod);
-        if (order.AssignedMechanic != null && !order.AssignedMechanic.AssignedOrderIds.Contains(order.Id))
-            order.AssignedMechanic.AssignedOrderIds.Add(order.Id);
-        NotifyAboutStatus(order, notificationType);
-        SaveAll();
+
+         if (newStatus == "Ready")
+           order.Cost = CalculateOrderCost(order, true, order.PaymentMethod);
+
+         if (order.AssignedMechanic != null &&
+           !order.AssignedMechanic.AssignedOrderIds.Contains(order.Id))
+           order.AssignedMechanic.AssignedOrderIds.Add(order.Id);
+
+          NotifyAboutStatus(order, notificationType);
+          SaveAll();
     }
 
     public void AddWorkToOrder(RepairOrder order, string name, double hours, decimal cost)
@@ -252,38 +255,43 @@ public class AutoServiceManager
         order.Cost = CalculateOrderCost(order, false, order.PaymentMethod);
         SaveAll();
     }
-
     public bool UsePartForOrder(RepairOrder order, Part part, int qty)
     {
-        _selectedPart = part;
-        if (part.Stock < qty)
-            return false;
+       if (part.Stock < qty)
+         return false;
 
         part.Stock -= qty;
-        for (var i = 0; i < qty; i++)
-            order.UsedPartIds.Add(part.Id);
+
+         for (var i = 0; i < qty; i++)
+         order.UsedPartIds.Add(part.Id);
+
         order.Cost += part.Price * qty * 1.50m;
         order.StatusHistory.Add($"{DateTime.Now:g}: part used {part.Name} x{qty}");
-        SaveAll();
-        return true;
-    }
+
+         SaveAll();
+          return true;
+    } 
 
     public decimal CalculateOrderCost(RepairOrder order, bool final, string paymentMethod)
     {
-        var works = order.Works.Sum(x => x.Cost + (decimal)x.Hours * (order.AssignedMechanic?.HourRate ?? 0));
-        var parts = order.UsedPartIds.Select(id => Parts.FirstOrDefault(p => p.Id == id)).Where(p => p != null).Sum(p => p!.Price * 1.20m);
-        var result = works + parts;
-        if (paymentMethod == "card")
-            result += result * 0.05m;
-        if (order.Customer != null && order.Customer.Cars.Count > 2)
-            result -= result * 0.10m;
-        if (final && order.Status == "Ready")
-            result += 500;
-        if (result > 10000)
-            _tempDiscount = result * 0.15m;
-        else
-            _tempDiscount = 0;
-        return result - _tempDiscount;
+      var works = order.Works.Sum(x => x.Cost + (decimal)x.Hours * (order.AssignedMechanic?.HourRate ?? 0));
+      var parts = order.UsedPartIds.Select(id => Parts.FirstOrDefault(p => p.Id == id)).Where(p => p != null).Sum(p => p!.Price * 1.20m);
+      var result = works + parts;
+
+       if (paymentMethod == "card")
+          result += result * 0.05m;
+
+       if (order.Customer != null && order.Customer.Cars.Count > 2)
+          result -= result * 0.10m;
+
+       if (final && order.Status == "Ready")
+          result += 500;
+
+       var discount = result > 10000
+           ? result * 0.15m
+          : 0;
+
+        return result - discount;
     }
 
     public string BuildOrderDetails(RepairOrder order)
@@ -298,17 +306,24 @@ public class AutoServiceManager
         foreach (var h in order.StatusHistory)
             sb.AppendLine(" - " + h);
         if (order.Customer?.Cars.Count > 0)
-            sb.AppendLine("First car owner phone: " + order.Customer.Cars[0].Owner?.Phone);
+          sb.AppendLine("First car owner phone: " + order.Customer.GetFirstCarOwnerPhone());
         return sb.ToString();
     }
 
     public string BuildReports(DateTime from, DateTime to)
     {
-        _currentReport = new RepairReport { Title = "General report", From = from, To = to, Orders = Orders };
-        return ReportService.BuildRevenueReport(Orders, from, to) + "\n"
-            + ReportService.BuildPopularWorks(Orders) + "\n\n"
-            + ReportService.BuildMechanicsLoad(Mechanics, Orders) + "\n"
-            + ReportService.BuildPartsStock(Parts);
+         var report = new RepairReport
+    {
+       Title = "General report",
+       From = from,
+       To = to,
+       Orders = Orders
+     };
+
+     return ReportService.BuildRevenueReport(Orders, from, to) + "\n"
+         + ReportService.BuildPopularWorks(Orders) + "\n\n"
+         + ReportService.BuildMechanicsLoad(Mechanics, Orders) + "\n"
+         + ReportService.BuildPartsStock(Parts);
     }
 
     public List<RepairOrder> GetOrdersForMechanic(Mechanic m)
@@ -323,22 +338,28 @@ public class AutoServiceManager
         return result;
     }
 
-    public void NotifyAboutStatus(RepairOrder order, string type)
+    private void NotifyAboutStatus(RepairOrder order, string type)
+{
+    var phone = order.Customer?.Phone ?? "";
+    var email = order.Customer?.Email ?? "";
+    var text = $"Order {order.OrderNumber}: new status {order.Status}";
+
+    if (type == "sms")
     {
-        var phone = order.Customer?.Phone ?? "";
-        var email = order.Customer?.Email ?? "";
-        var text = $"Order {order.OrderNumber}: new status {order.Status}";
-        if (type == "sms")
-            SmsNotifier.SendSms(phone, text);
-        else if (type == "email")
-            EmailSender.Send(email, "Order status", text);
-        else
-        {
-            SmsNotifier.SendSms(phone, text);
-            EmailSender.Send(email, "Order status", text);
-        }
-        Notifications.Add($"{DateTime.Now:g}: {type} {text}");
+        SmsNotifier.SendSms(phone, text);
     }
+    else if (type == "email")
+    {
+        EmailSender.Send(email, "Order status", text);
+    }
+    else
+    {
+        SmsNotifier.SendSms(phone, text);
+        EmailSender.Send(email, "Order status", text);
+    }
+
+    Notifications.Add($"{DateTime.Now:g}: {type} {text}");
+}
 
     private void Seed()
     {
