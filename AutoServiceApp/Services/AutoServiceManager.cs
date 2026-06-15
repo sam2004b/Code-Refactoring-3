@@ -236,14 +236,17 @@ public class AutoServiceManager
 
     public void ChangeOrderStatus(RepairOrder order, string newStatus, string notificationType)
     {
-        _selectedOrder = order;
         StatusHelper.MarkStatus(order, newStatus);
-        if (newStatus == "Ready")
-            order.Cost = CalculateOrderCost(order, true, order.PaymentMethod);
-        if (order.AssignedMechanic != null && !order.AssignedMechanic.AssignedOrderIds.Contains(order.Id))
-            order.AssignedMechanic.AssignedOrderIds.Add(order.Id);
-        NotifyAboutStatus(order, notificationType);
-        SaveAll();
+
+         if (newStatus == "Ready")
+           order.Cost = CalculateOrderCost(order, true, order.PaymentMethod);
+
+         if (order.AssignedMechanic != null &&
+           !order.AssignedMechanic.AssignedOrderIds.Contains(order.Id))
+           order.AssignedMechanic.AssignedOrderIds.Add(order.Id);
+
+          NotifyAboutStatus(order, notificationType);
+          SaveAll();
     }
 
     public void AddWorkToOrder(RepairOrder order, string name, double hours, decimal cost)
@@ -253,21 +256,22 @@ public class AutoServiceManager
         order.Cost = CalculateOrderCost(order, false, order.PaymentMethod);
         SaveAll();
     }
-
     public bool UsePartForOrder(RepairOrder order, Part part, int qty)
     {
-        _selectedPart = part;
-        if (part.Stock < qty)
-            return false;
+       if (part.Stock < qty)
+         return false;
 
         part.Stock -= qty;
-        for (var i = 0; i < qty; i++)
-            order.UsedPartIds.Add(part.Id);
+
+         for (var i = 0; i < qty; i++)
+         order.UsedPartIds.Add(part.Id);
+
         order.Cost += part.Price * qty * 1.50m;
         order.StatusHistory.Add($"{DateTime.Now:g}: part used {part.Name} x{qty}");
-        SaveAll();
-        return true;
-    }
+
+         SaveAll();
+          return true;
+    } 
 
     public decimal CalculateOrderCost(RepairOrder order, bool final, string paymentMethod)
     {
@@ -280,11 +284,11 @@ public class AutoServiceManager
             result -= result * 0.10m;
         if (final && order.Status == "Ready")
             result += 500;
-        if (result > 10000)
-            _tempDiscount = result * 0.15m;
-        else
-            _tempDiscount = 0;
-        return result - _tempDiscount;
+        var discount = result > 10000
+          ? result * 0.15m
+          : 0;
+
+         return result - discount;
     }
 
     public string BuildOrderDetails(RepairOrder order)
@@ -305,11 +309,18 @@ public class AutoServiceManager
 
     public string BuildReports(DateTime from, DateTime to)
     {
-        _currentReport = new RepairReport { Title = "General report", From = from, To = to, Orders = Orders };
-        return ReportService.BuildRevenueReport(Orders, from, to) + "\n"
-            + ReportService.BuildPopularWorks(Orders) + "\n\n"
-            + ReportService.BuildMechanicsLoad(Mechanics, Orders) + "\n"
-            + ReportService.BuildPartsStock(Parts);
+         var report = new RepairReport
+    {
+       Title = "General report",
+       From = from,
+       To = to,
+       Orders = Orders
+     };
+
+     return ReportService.BuildRevenueReport(Orders, from, to) + "\n"
+         + ReportService.BuildPopularWorks(Orders) + "\n\n"
+         + ReportService.BuildMechanicsLoad(Mechanics, Orders) + "\n"
+         + ReportService.BuildPartsStock(Parts);
     }
 
     public List<RepairOrder> GetOrdersForMechanic(Mechanic m)
