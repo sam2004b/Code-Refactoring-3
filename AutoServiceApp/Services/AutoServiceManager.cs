@@ -28,7 +28,6 @@ public class AutoServiceManager
     public EmailSender EmailSender { get; set; } = new();
     public ReportService ReportService { get; set; } = new();
     public OrderStatusHelper StatusHelper { get; set; } = new();
-    public NotificationService NotificationService { get; set; } = new();
 
     public void Load()
     {
@@ -275,28 +274,22 @@ public class AutoServiceManager
 
     public decimal CalculateOrderCost(RepairOrder order, bool final, string paymentMethod)
     {
-      var works = order.Works.Sum(
-         x => x.Cost + (decimal)x.Hours * (order.AssignedMechanic?.HourRate ?? 0));
+      var works = order.Works.Sum(x => x.Cost + (decimal)x.Hours * (order.AssignedMechanic?.HourRate ?? 0));
+      var parts = order.UsedPartIds.Select(id => Parts.FirstOrDefault(p => p.Id == id)).Where(p => p != null).Sum(p => p!.Price * 1.20m);
+      var result = works + parts;
 
-     var parts = order.UsedPartIds
-        .Select(id => Parts.FirstOrDefault(p => p.Id == id))
-        .Where(p => p != null)
-        .Sum(p => p!.Price * StoredPartMarkupRate);
+       if (paymentMethod == "card")
+          result += result * 0.05m;
 
-       var result = works + parts;
+       if (order.Customer != null && order.Customer.Cars.Count > 2)
+          result -= result * 0.10m;
 
-      if (paymentMethod == "card")
-         result += result * CardFeeRate;
+       if (final && order.Status == "Ready")
+          result += 500;
 
-      if (order.Customer != null && order.Customer.Cars.Count > 2)
-         result -= result * LoyaltyDiscountRate;
-
-      if (final && order.Status == "Ready")
-         result += FinalizationFee;
-
-       var discount = result > DiscountThreshold
-        ? result * HighValueDiscountRate
-        : 0;
+       var discount = result > 10000
+           ? result * 0.15m
+          : 0;
 
         return result - discount;
     }
@@ -345,15 +338,28 @@ public class AutoServiceManager
         return result;
     }
 
-    private void NotifyAboutStatus(
-          RepairOrder order,
-          string type)
-        {
-            NotificationService.NotifyAboutStatus(
-            order,
-            type,
-            Notifications);
-        }
+    private void NotifyAboutStatus(RepairOrder order, string type)
+{
+    var phone = order.Customer?.Phone ?? "";
+    var email = order.Customer?.Email ?? "";
+    var text = $"Order {order.OrderNumber}: new status {order.Status}";
+
+    if (type == "sms")
+    {
+        SmsNotifier.SendSms(phone, text);
+    }
+    else if (type == "email")
+    {
+        EmailSender.Send(email, "Order status", text);
+    }
+    else
+    {
+        SmsNotifier.SendSms(phone, text);
+        EmailSender.Send(email, "Order status", text);
+    }
+
+    Notifications.Add($"{DateTime.Now:g}: {type} {text}");
+}
 
     private void Seed()
     {
