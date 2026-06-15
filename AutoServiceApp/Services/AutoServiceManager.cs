@@ -28,6 +28,7 @@ public class AutoServiceManager
     public EmailSender EmailSender { get; set; } = new();
     public ReportService ReportService { get; set; } = new();
     public OrderStatusHelper StatusHelper { get; set; } = new();
+    public NotificationService NotificationService { get; set; } = new();
 
     public void Load()
     {
@@ -323,22 +324,15 @@ public class AutoServiceManager
         return result;
     }
 
-    public void NotifyAboutStatus(RepairOrder order, string type)
-    {
-        var phone = order.Customer?.Phone ?? "";
-        var email = order.Customer?.Email ?? "";
-        var text = $"Order {order.OrderNumber}: new status {order.Status}";
-        if (type == "sms")
-            SmsNotifier.SendSms(phone, text);
-        else if (type == "email")
-            EmailSender.Send(email, "Order status", text);
-        else
+    private void NotifyAboutStatus(
+          RepairOrder order,
+          string type)
         {
-            SmsNotifier.SendSms(phone, text);
-            EmailSender.Send(email, "Order status", text);
+            NotificationService.NotifyAboutStatus(
+            order,
+            type,
+            Notifications);
         }
-        Notifications.Add($"{DateTime.Now:g}: {type} {text}");
-    }
 
     private void Seed()
     {

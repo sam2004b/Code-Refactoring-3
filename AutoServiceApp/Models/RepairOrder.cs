@@ -5,15 +5,20 @@ public class RepairOrder : BaseEntity
     public string OrderNumber { get; set; } = "";
     public string CustomerId { get; set; } = "";
     public string CarId { get; set; } = "";
+
     [System.Text.Json.Serialization.JsonIgnore]
     public Customer? Customer { get; set; }
+
     [System.Text.Json.Serialization.JsonIgnore]
     public Car? Car { get; set; }
+
     public string ProblemDescription { get; set; } = "";
     public string Status { get; set; } = "New";
     public string AssignedMechanicId { get; set; } = "";
+
     [System.Text.Json.Serialization.JsonIgnore]
     public Mechanic? AssignedMechanic { get; set; }
+
     public DateTime AcceptedAt { get; set; } = DateTime.Now;
     public DateTime? CompletedAt { get; set; }
     public decimal Cost { get; set; }
@@ -32,8 +37,11 @@ public class RepairOrder : BaseEntity
 
 public class UrgentRepairOrder : RepairOrder
 {
+     private const decimal DefaultUrgentFee = 500m;
+
     public bool NeedTaxi { get; set; }
-    public decimal UrgentFee { get; set; } = 500;
+
+    public decimal UrgentFee { get; set; } = DefaultUrgentFee;
 }
 
 public class WarrantyRepairOrder : RepairOrder
