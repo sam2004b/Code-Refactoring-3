@@ -275,20 +275,30 @@ public class AutoServiceManager
 
     public decimal CalculateOrderCost(RepairOrder order, bool final, string paymentMethod)
     {
-        var works = order.Works.Sum(x => x.Cost + (decimal)x.Hours * (order.AssignedMechanic?.HourRate ?? 0));
-        var parts = order.UsedPartIds.Select(id => Parts.FirstOrDefault(p => p.Id == id)).Where(p => p != null).Sum(p => p!.Price * 1.20m);
-        var result = works + parts;
-        if (paymentMethod == "card")
-            result += result * 0.05m;
-        if (order.Customer != null && order.Customer.Cars.Count > 2)
-            result -= result * 0.10m;
-        if (final && order.Status == "Ready")
-            result += 500;
-        var discount = result > 10000
-          ? result * 0.15m
-          : 0;
+      var works = order.Works.Sum(
+         x => x.Cost + (decimal)x.Hours * (order.AssignedMechanic?.HourRate ?? 0));
 
-         return result - discount;
+     var parts = order.UsedPartIds
+        .Select(id => Parts.FirstOrDefault(p => p.Id == id))
+        .Where(p => p != null)
+        .Sum(p => p!.Price * StoredPartMarkupRate);
+
+       var result = works + parts;
+
+      if (paymentMethod == "card")
+         result += result * CardFeeRate;
+
+      if (order.Customer != null && order.Customer.Cars.Count > 2)
+         result -= result * LoyaltyDiscountRate;
+
+      if (final && order.Status == "Ready")
+         result += FinalizationFee;
+
+       var discount = result > DiscountThreshold
+        ? result * HighValueDiscountRate
+        : 0;
+
+        return result - discount;
     }
 
     public string BuildOrderDetails(RepairOrder order)
