@@ -544,40 +544,113 @@ private Grid BuildOrderDetailsPanel()
         return grid;
     }
 
-    private Control BuildMechanicsTab()
+   private Control BuildMechanicsTab()
+{
+    var grid = TwoColumnGrid();
+
+    var form = BuildMechanicForm();
+
+    Grid.SetColumn(form, 0);
+    grid.Children.Add(form);
+
+    var mechanicList = BuildMechanicList();
+
+    Grid.SetColumn(mechanicList, 1);
+    grid.Children.Add(mechanicList);
+
+    return grid;
+}
+
+private StackPanel BuildMechanicForm()
+{
+    var form = FormPanel();
+
+    _mechanicName = Box("Name");
+    _mechanicSpec = Box("Specialization");
+    _mechanicRate = Box("Rate");
+
+    _mechanicOrders = new TextBox
     {
-        var grid = TwoColumnGrid();
-        var form = FormPanel();
-        _mechanicName = Box("Name");
-        _mechanicSpec = Box("Specialization");
-        _mechanicRate = Box("Rate");
-        _mechanicOrders = new TextBox { AcceptsReturn = true, IsReadOnly = true, MinHeight = 200 };
-        AddLabeled(form, "Name", _mechanicName);
-        AddLabeled(form, "Specialization", _mechanicSpec);
-        AddLabeled(form, "Rate", _mechanicRate);
-        form.Children.Add(RowButtons(
-            ("Create", (_, _) => { Manager.AddMechanic(_mechanicName.Text ?? "", _mechanicSpec.Text ?? "", Decimal(_mechanicRate.Text)); ClearMechanicForm(); RefreshAll(); }),
-            ("Save", (_, _) => { if (_mechanicList.SelectedItem is Mechanic m) { Manager.UpdateMechanic(m, _mechanicName.Text ?? "", _mechanicSpec.Text ?? "", Decimal(_mechanicRate.Text)); RefreshAll(); } }),
-            ("Delete", (_, _) => { if (_mechanicList.SelectedItem is Mechanic m) { _mechanicList.ItemsSource = null; Manager.DeleteMechanic(m); ClearMechanicForm(); RefreshAll(); } })));
-        form.Children.Add(new TextBlock { Text = "Assigned orders" });
-        form.Children.Add(_mechanicOrders);
-        Grid.SetColumn(form, 0);
-        grid.Children.Add(form);
-        _mechanicList = new ListBox();
-        _mechanicList.SelectionChanged += (_, _) =>
+        AcceptsReturn = true,
+        IsReadOnly = true,
+        MinHeight = 200
+    };
+
+    AddLabeled(form, "Name", _mechanicName);
+    AddLabeled(form, "Specialization", _mechanicSpec);
+    AddLabeled(form, "Rate", _mechanicRate);
+
+    form.Children.Add(RowButtons(
+        ("Create", (_, _) =>
+        {
+            Manager.AddMechanic(
+                _mechanicName.Text ?? "",
+                _mechanicSpec.Text ?? "",
+                Decimal(_mechanicRate.Text));
+
+            ClearMechanicForm();
+            RefreshAll();
+        }),
+        ("Save", (_, _) =>
         {
             if (_mechanicList.SelectedItem is Mechanic m)
             {
-                _mechanicName.Text = m.Name;
-                _mechanicSpec.Text = m.Specialization;
-                _mechanicRate.Text = m.HourRate.ToString();
-                _mechanicOrders.Text = string.Join("\n", Manager.GetOrdersForMechanic(m).Select(x => x.ToString()));
+                Manager.UpdateMechanic(
+                    m,
+                    _mechanicName.Text ?? "",
+                    _mechanicSpec.Text ?? "",
+                    Decimal(_mechanicRate.Text));
+
+                RefreshAll();
             }
-        };
-        Grid.SetColumn(_mechanicList, 1);
-        grid.Children.Add(_mechanicList);
-        return grid;
-    }
+        }),
+        ("Delete", (_, _) =>
+        {
+            if (_mechanicList.SelectedItem is Mechanic m)
+            {
+                _mechanicList.ItemsSource = null;
+
+                Manager.DeleteMechanic(m);
+
+                ClearMechanicForm();
+                RefreshAll();
+            }
+        })));
+
+    form.Children.Add(
+        new TextBlock
+        {
+            Text = "Assigned orders"
+        });
+
+    form.Children.Add(_mechanicOrders);
+
+    return form;
+}
+
+private ListBox BuildMechanicList()
+{
+    _mechanicList = new ListBox();
+
+    _mechanicList.SelectionChanged += (_, _) =>
+    {
+        if (_mechanicList.SelectedItem is Mechanic m)
+        {
+            _mechanicName.Text = m.Name;
+            _mechanicSpec.Text = m.Specialization;
+            _mechanicRate.Text = m.HourRate.ToString();
+
+            _mechanicOrders.Text =
+                string.Join(
+                    "\n",
+                    Manager.GetOrdersForMechanic(m)
+                           .Select(x => x.ToString()));
+        }
+    };
+
+    return _mechanicList;
+}
+
 
     private Control BuildReportsTab()
     {
