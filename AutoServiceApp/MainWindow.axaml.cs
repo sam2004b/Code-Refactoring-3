@@ -183,67 +183,208 @@ public partial class MainWindow : Window
     }
 
     private Control BuildOrdersTab()
+{
+    var grid = TwoColumnGrid(420);
+
+    var form = FormPanel();
+
+    BuildOrderForm(form);
+    BuildWorkSection(form);
+    BuildPartUsageSection(form);
+
+    Grid.SetColumn(form, 0);
+    grid.Children.Add(new ScrollViewer { Content = form });
+
+    var right = BuildOrderDetailsPanel();
+
+    Grid.SetColumn(right, 1);
+    grid.Children.Add(right);
+
+    return grid;
+}
+
+private void BuildOrderForm(StackPanel form)
+{
+    _orderCustomer = new ComboBox { PlaceholderText = "Customer" };
+    _orderCar = new ComboBox { PlaceholderText = "Car" };
+    _orderMechanic = new ComboBox { PlaceholderText = "Mechanic" };
+
+    _orderStatus = new ComboBox
     {
-        var grid = TwoColumnGrid(420);
-        var form = FormPanel();
-        _orderCustomer = new ComboBox { PlaceholderText = "Customer" };
-        _orderCar = new ComboBox { PlaceholderText = "Car" };
-        _orderMechanic = new ComboBox { PlaceholderText = "Mechanic" };
-        _orderStatus = new ComboBox { ItemsSource = new[] { "New", "Diagnostics", "In Progress", "Waiting for Parts", "Ready", "Released" }, SelectedIndex = 0 };
-        _orderPayment = new ComboBox { ItemsSource = new[] { "cash", "card", "transfer" }, SelectedIndex = 0 };
-        _orderProblem = Box("Problem description");
-        _orderCost = Box("Cost");
-        AddLabeled(form, "Customer", _orderCustomer);
-        AddLabeled(form, "Car", _orderCar);
-        AddLabeled(form, "Mechanic", _orderMechanic);
-        AddLabeled(form, "Status", _orderStatus);
-        AddLabeled(form, "Payment", _orderPayment);
-        AddLabeled(form, "Description", _orderProblem);
-        AddLabeled(form, "Cost", _orderCost);
-        form.Children.Add(RowButtons(
-            ("Create", (_, _) => { Manager.CreateOrder(_orderCustomer.SelectedItem as Customer, _orderCar.SelectedItem as Car, _orderProblem.Text ?? "", _orderMechanic.SelectedItem as Mechanic, _orderStatus.SelectedItem?.ToString() ?? "New", _orderPayment.SelectedItem?.ToString() ?? "cash"); ClearOrderForm(); RefreshAll(); }),
-            ("Save", (_, _) => { if (_orderList.SelectedItem is RepairOrder o) { Manager.UpdateOrder(o, _orderCustomer.SelectedItem as Customer, _orderCar.SelectedItem as Car, _orderProblem.Text ?? "", _orderMechanic.SelectedItem as Mechanic, _orderStatus.SelectedItem?.ToString() ?? "New", Decimal(_orderCost.Text), _orderPayment.SelectedItem?.ToString() ?? "cash"); RefreshAll(); } }),
-            ("Delete", (_, _) => { if (_orderList.SelectedItem is RepairOrder o) { _orderList.ItemsSource = null; Manager.Orders.Remove(o); Manager.SaveAll(); ClearOrderForm(); RefreshAll(); } })));
+        ItemsSource = new[]
+        {
+            "New",
+            "Diagnostics",
+            "In Progress",
+            "Waiting for Parts",
+            "Ready",
+            "Released"
+        },
+        SelectedIndex = 0
+    };
 
-        form.Children.Add(new TextBlock { Text = "Add work", Margin = new Avalonia.Thickness(0, 12, 0, 0) });
-        _workName = Box("Work name");
-        _workHours = Box("Hours");
-        _workCost = Box("Cost");
-        AddLabeled(form, "Work", _workName);
-        AddLabeled(form, "Hours", _workHours);
-        AddLabeled(form, "Price", _workCost);
-        form.Children.Add(Button("Add work", (_, _) => { if (_orderList.SelectedItem is RepairOrder o) { Manager.AddWorkToOrder(o, _workName.Text ?? "", Double(_workHours.Text), Decimal(_workCost.Text)); RefreshAll(); SelectOrder(o); } }));
+    _orderPayment = new ComboBox
+    {
+        ItemsSource = new[] { "cash", "card", "transfer" },
+        SelectedIndex = 0
+    };
 
-        form.Children.Add(new TextBlock { Text = "Use part", Margin = new Avalonia.Thickness(0, 12, 0, 0) });
-        _usePartCombo = new ComboBox { PlaceholderText = "Part" };
-        _usePartQty = Box("Quantity");
-        AddLabeled(form, "Part", _usePartCombo);
-        AddLabeled(form, "Qty", _usePartQty);
-        form.Children.Add(Button("Use", (_, _) => { if (_orderList.SelectedItem is RepairOrder o && _usePartCombo.SelectedItem is Part p) { Manager.UsePartForOrder(o, p, Math.Max(1, Int(_usePartQty.Text))); RefreshAll(); SelectOrder(o); } }));
-        Grid.SetColumn(form, 0);
-        grid.Children.Add(new ScrollViewer { Content = form });
+    _orderProblem = Box("Problem description");
+    _orderCost = Box("Cost");
 
-        var right = new Grid();
-        right.RowDefinitions.Add(new RowDefinition(new GridLength(260)));
-        right.RowDefinitions.Add(new RowDefinition(new GridLength(120)));
-        right.RowDefinitions.Add(new RowDefinition(GridLength.Star));
-        _orderList = new ListBox();
-        _orderList.SelectionChanged += (_, _) =>
+    AddLabeled(form, "Customer", _orderCustomer);
+    AddLabeled(form, "Car", _orderCar);
+    AddLabeled(form, "Mechanic", _orderMechanic);
+    AddLabeled(form, "Status", _orderStatus);
+    AddLabeled(form, "Payment", _orderPayment);
+    AddLabeled(form, "Description", _orderProblem);
+    AddLabeled(form, "Cost", _orderCost);
+
+    form.Children.Add(RowButtons(
+        ("Create", (_, _) =>
+        {
+            Manager.CreateOrder(
+                _orderCustomer.SelectedItem as Customer,
+                _orderCar.SelectedItem as Car,
+                _orderProblem.Text ?? "",
+                _orderMechanic.SelectedItem as Mechanic,
+                _orderStatus.SelectedItem?.ToString() ?? "New",
+                _orderPayment.SelectedItem?.ToString() ?? "cash");
+
+            ClearOrderForm();
+            RefreshAll();
+        }),
+        ("Save", (_, _) =>
         {
             if (_orderList.SelectedItem is RepairOrder o)
-                FillOrder(o);
-        };
-        right.Children.Add(_orderList);
-        _orderWorkList = new ListBox();
-        Grid.SetRow(_orderWorkList, 1);
-        right.Children.Add(_orderWorkList);
-        _orderDetailsText = new TextBox { AcceptsReturn = true, IsReadOnly = true };
-        Grid.SetRow(_orderDetailsText, 2);
-        right.Children.Add(_orderDetailsText);
-        Grid.SetColumn(right, 1);
-        grid.Children.Add(right);
-        return grid;
-    }
+            {
+                Manager.UpdateOrder(
+                    o,
+                    _orderCustomer.SelectedItem as Customer,
+                    _orderCar.SelectedItem as Car,
+                    _orderProblem.Text ?? "",
+                    _orderMechanic.SelectedItem as Mechanic,
+                    _orderStatus.SelectedItem?.ToString() ?? "New",
+                    Decimal(_orderCost.Text),
+                    _orderPayment.SelectedItem?.ToString() ?? "cash");
+
+                RefreshAll();
+            }
+        }),
+        ("Delete", (_, _) =>
+        {
+            if (_orderList.SelectedItem is RepairOrder o)
+            {
+                _orderList.ItemsSource = null;
+                Manager.Orders.Remove(o);
+                Manager.SaveAll();
+
+                ClearOrderForm();
+                RefreshAll();
+            }
+        })));
+}
+
+private void BuildWorkSection(StackPanel form)
+{
+    form.Children.Add(
+        new TextBlock
+        {
+            Text = "Add work",
+            Margin = new Avalonia.Thickness(0, 12, 0, 0)
+        });
+
+    _workName = Box("Work name");
+    _workHours = Box("Hours");
+    _workCost = Box("Cost");
+
+    AddLabeled(form, "Work", _workName);
+    AddLabeled(form, "Hours", _workHours);
+    AddLabeled(form, "Price", _workCost);
+
+    form.Children.Add(Button("Add work", (_, _) =>
+    {
+        if (_orderList.SelectedItem is RepairOrder o)
+        {
+            Manager.AddWorkToOrder(
+                o,
+                _workName.Text ?? "",
+                Double(_workHours.Text),
+                Decimal(_workCost.Text));
+
+            RefreshAll();
+            SelectOrder(o);
+        }
+    }));
+}
+
+private void BuildPartUsageSection(StackPanel form)
+{
+    form.Children.Add(
+        new TextBlock
+        {
+            Text = "Use part",
+            Margin = new Avalonia.Thickness(0, 12, 0, 0)
+        });
+
+    _usePartCombo = new ComboBox { PlaceholderText = "Part" };
+    _usePartQty = Box("Quantity");
+
+    AddLabeled(form, "Part", _usePartCombo);
+    AddLabeled(form, "Qty", _usePartQty);
+
+    form.Children.Add(Button("Use", (_, _) =>
+    {
+        if (_orderList.SelectedItem is RepairOrder o &&
+            _usePartCombo.SelectedItem is Part p)
+        {
+            Manager.UsePartForOrder(
+                o,
+                p,
+                Math.Max(1, Int(_usePartQty.Text)));
+
+            RefreshAll();
+            SelectOrder(o);
+        }
+    }));
+}
+
+private Grid BuildOrderDetailsPanel()
+{
+    var right = new Grid();
+
+    right.RowDefinitions.Add(new RowDefinition(new GridLength(260)));
+    right.RowDefinitions.Add(new RowDefinition(new GridLength(120)));
+    right.RowDefinitions.Add(new RowDefinition(GridLength.Star));
+
+    _orderList = new ListBox();
+
+    _orderList.SelectionChanged += (_, _) =>
+    {
+        if (_orderList.SelectedItem is RepairOrder o)
+        {
+            FillOrder(o);
+        }
+    };
+
+    right.Children.Add(_orderList);
+
+    _orderWorkList = new ListBox();
+    Grid.SetRow(_orderWorkList, 1);
+    right.Children.Add(_orderWorkList);
+
+    _orderDetailsText = new TextBox
+    {
+        AcceptsReturn = true,
+        IsReadOnly = true
+    };
+
+    Grid.SetRow(_orderDetailsText, 2);
+    right.Children.Add(_orderDetailsText);
+
+    return right;
+}
+
 
     private Control BuildPartsTab()
     {
