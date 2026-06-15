@@ -30,26 +30,11 @@ public class JsonFileStore<T> : IDataProvider<T>
 
         try
         {
-            var json = File.ReadAllText(file);
-
-            return JsonSerializer.Deserialize<List<T>>(
-                json,
-                Options) ?? new List<T>();
+            return ReadAndDeserialize(file);
         }
         catch
         {
-            var bad = Path.Combine(
-                Folder,
-                name + BrokenFileSuffix + DateTime.Now.Ticks);
-
-            try
-            {
-                File.Copy(file, bad);
-            }
-            catch
-            {
-            }
-
+            CreateBackup(file, name);
             return new List<T>();
         }
     }
@@ -63,5 +48,29 @@ public class JsonFileStore<T> : IDataProvider<T>
             Options);
 
         File.WriteAllText(file, json);
+    }
+
+    private List<T> ReadAndDeserialize(string file)
+    {
+        var json = File.ReadAllText(file);
+
+        return JsonSerializer.Deserialize<List<T>>(
+            json,
+            Options) ?? new List<T>();
+    }
+
+    private void CreateBackup(string file, string name)
+    {
+        var bad = Path.Combine(
+            Folder,
+            name + BrokenFileSuffix + DateTime.Now.Ticks);
+
+        try
+        {
+            File.Copy(file, bad);
+        }
+        catch
+        {
+        }
     }
 }
