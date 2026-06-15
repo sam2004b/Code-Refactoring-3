@@ -105,39 +105,95 @@ public partial class MainWindow : Window
     }
 
     private Control BuildCustomersTab()
-    {
-        var grid = TwoColumnGrid();
-        var form = FormPanel();
-        _customerName = Box("Name");
-        _customerPhone = Box("Phone");
-        _customerEmail = Box("Email");
-        _customerAddress = Box("Address");
-        AddLabeled(form, "Name", _customerName);
-        AddLabeled(form, "Phone", _customerPhone);
-        AddLabeled(form, "Email", _customerEmail);
-        AddLabeled(form, "Address", _customerAddress);
-        form.Children.Add(RowButtons(
-            ("Create", (_, _) => { Manager.AddCustomer(_customerName.Text ?? "", _customerPhone.Text ?? "", _customerEmail.Text ?? "", _customerAddress.Text ?? ""); ClearCustomerForm(); RefreshAll(); }),
-            ("Save", (_, _) => { if (_customerList.SelectedItem is Customer c) { Manager.UpdateCustomer(c, _customerName.Text ?? "", _customerPhone.Text ?? "", _customerEmail.Text ?? "", _customerAddress.Text ?? ""); RefreshAll(); } }),
-            ("Delete", (_, _) => { if (_customerList.SelectedItem is Customer c) { _customerList.ItemsSource = null; Manager.DeleteCustomer(c); ClearCustomerForm(); RefreshAll(); } })));
-        Grid.SetColumn(form, 0);
-        grid.Children.Add(form);
+{
+    var grid = TwoColumnGrid();
 
-        _customerList = new ListBox();
-        _customerList.SelectionChanged += (_, _) =>
+    var form = BuildCustomerForm();
+
+    Grid.SetColumn(form, 0);
+    grid.Children.Add(form);
+
+    var customerList = BuildCustomerList();
+
+    Grid.SetColumn(customerList, 1);
+    grid.Children.Add(customerList);
+
+    return grid;
+}
+
+private StackPanel BuildCustomerForm()
+{
+    var form = FormPanel();
+
+    _customerName = Box("Name");
+    _customerPhone = Box("Phone");
+    _customerEmail = Box("Email");
+    _customerAddress = Box("Address");
+
+    AddLabeled(form, "Name", _customerName);
+    AddLabeled(form, "Phone", _customerPhone);
+    AddLabeled(form, "Email", _customerEmail);
+    AddLabeled(form, "Address", _customerAddress);
+
+    form.Children.Add(RowButtons(
+        ("Create", (_, _) =>
+        {
+            Manager.AddCustomer(
+                _customerName.Text ?? "",
+                _customerPhone.Text ?? "",
+                _customerEmail.Text ?? "",
+                _customerAddress.Text ?? "");
+
+            ClearCustomerForm();
+            RefreshAll();
+        }),
+        ("Save", (_, _) =>
         {
             if (_customerList.SelectedItem is Customer c)
             {
-                _customerName.Text = c.Name;
-                _customerPhone.Text = c.Phone;
-                _customerEmail.Text = c.Email;
-                _customerAddress.Text = c.Address;
+                Manager.UpdateCustomer(
+                    c,
+                    _customerName.Text ?? "",
+                    _customerPhone.Text ?? "",
+                    _customerEmail.Text ?? "",
+                    _customerAddress.Text ?? "");
+
+                RefreshAll();
             }
-        };
-        Grid.SetColumn(_customerList, 1);
-        grid.Children.Add(_customerList);
-        return grid;
-    }
+        }),
+        ("Delete", (_, _) =>
+        {
+            if (_customerList.SelectedItem is Customer c)
+            {
+                _customerList.ItemsSource = null;
+
+                Manager.DeleteCustomer(c);
+
+                ClearCustomerForm();
+                RefreshAll();
+            }
+        })));
+
+    return form;
+}
+
+private ListBox BuildCustomerList()
+{
+    _customerList = new ListBox();
+
+    _customerList.SelectionChanged += (_, _) =>
+    {
+        if (_customerList.SelectedItem is Customer c)
+        {
+            _customerName.Text = c.Name;
+            _customerPhone.Text = c.Phone;
+            _customerEmail.Text = c.Email;
+            _customerAddress.Text = c.Address;
+        }
+    };
+
+    return _customerList;
+}
 
     private Control BuildCarsTab()
     {
