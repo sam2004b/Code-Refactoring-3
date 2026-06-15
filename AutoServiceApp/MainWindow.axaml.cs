@@ -195,48 +195,116 @@ private ListBox BuildCustomerList()
     return _customerList;
 }
 
-    private Control BuildCarsTab()
-    {
-        var grid = TwoColumnGrid();
-        var form = FormPanel();
-        _carCustomer = new ComboBox { PlaceholderText = "Customer" };
-        _carMake = Box("Make");
-        _carModel = Box("Model");
-        _carYear = Box("Year");
-        _carVin = Box("VIN");
-        _carLicense = Box("License plate");
-        _carMileage = Box("Mileage");
-        AddLabeled(form, "Customer", _carCustomer);
-        AddLabeled(form, "Make", _carMake);
-        AddLabeled(form, "Model", _carModel);
-        AddLabeled(form, "Year", _carYear);
-        AddLabeled(form, "VIN", _carVin);
-        AddLabeled(form, "License plate", _carLicense);
-        AddLabeled(form, "Mileage", _carMileage);
-        form.Children.Add(RowButtons(
-            ("Create", (_, _) => { Manager.AddCar(_carCustomer.SelectedItem as Customer, _carMake.Text ?? "", _carModel.Text ?? "", Int(_carYear.Text), _carVin.Text ?? "", Int(_carMileage.Text), _carLicense.Text ?? ""); ClearCarForm(); RefreshAll(); }),
-            ("Save", (_, _) => { if (_carList.SelectedItem is Car car) { Manager.UpdateCar(car, _carCustomer.SelectedItem as Customer, _carMake.Text ?? "", _carModel.Text ?? "", Int(_carYear.Text), _carVin.Text ?? "", Int(_carMileage.Text), _carLicense.Text ?? ""); RefreshAll(); } }),
-            ("Delete", (_, _) => { if (_carList.SelectedItem is Car car) { _carList.ItemsSource = null; Manager.DeleteCar(car); ClearCarForm(); RefreshAll(); } })));
-        Grid.SetColumn(form, 0);
-        grid.Children.Add(form);
-        _carList = new ListBox();
-        _carList.SelectionChanged += (_, _) =>
+   private Control BuildCarsTab()
+{
+    var grid = TwoColumnGrid();
+
+    var form = BuildCarForm();
+
+    Grid.SetColumn(form, 0);
+    grid.Children.Add(form);
+
+    var carList = BuildCarList();
+
+    Grid.SetColumn(carList, 1);
+    grid.Children.Add(carList);
+
+    return grid;
+}
+
+private StackPanel BuildCarForm()
+{
+    var form = FormPanel();
+
+    _carCustomer = new ComboBox { PlaceholderText = "Customer" };
+    _carMake = Box("Make");
+    _carModel = Box("Model");
+    _carYear = Box("Year");
+    _carVin = Box("VIN");
+    _carLicense = Box("License plate");
+    _carMileage = Box("Mileage");
+
+    AddLabeled(form, "Customer", _carCustomer);
+    AddLabeled(form, "Make", _carMake);
+    AddLabeled(form, "Model", _carModel);
+    AddLabeled(form, "Year", _carYear);
+    AddLabeled(form, "VIN", _carVin);
+    AddLabeled(form, "License plate", _carLicense);
+    AddLabeled(form, "Mileage", _carMileage);
+
+    form.Children.Add(RowButtons(
+        ("Create", (_, _) =>
+        {
+            Manager.AddCar(
+                _carCustomer.SelectedItem as Customer,
+                _carMake.Text ?? "",
+                _carModel.Text ?? "",
+                Int(_carYear.Text),
+                _carVin.Text ?? "",
+                Int(_carMileage.Text),
+                _carLicense.Text ?? "");
+
+            ClearCarForm();
+            RefreshAll();
+        }),
+        ("Save", (_, _) =>
         {
             if (_carList.SelectedItem is Car car)
             {
-                _carCustomer.SelectedItem = Manager.Customers.FirstOrDefault(x => x.Id == car.CustomerId);
-                _carMake.Text = car.Make;
-                _carModel.Text = car.Model;
-                _carYear.Text = car.Year.ToString();
-                _carVin.Text = car.Vin;
-                _carLicense.Text = car.LicensePlate;
-                _carMileage.Text = car.Mileage.ToString();
+                Manager.UpdateCar(
+                    car,
+                    _carCustomer.SelectedItem as Customer,
+                    _carMake.Text ?? "",
+                    _carModel.Text ?? "",
+                    Int(_carYear.Text),
+                    _carVin.Text ?? "",
+                    Int(_carMileage.Text),
+                    _carLicense.Text ?? "");
+
+                RefreshAll();
             }
-        };
-        Grid.SetColumn(_carList, 1);
-        grid.Children.Add(_carList);
-        return grid;
-    }
+        }),
+        ("Delete", (_, _) =>
+        {
+            if (_carList.SelectedItem is Car car)
+            {
+                _carList.ItemsSource = null;
+
+                Manager.DeleteCar(car);
+
+                ClearCarForm();
+                RefreshAll();
+            }
+        })));
+
+    return form;
+}
+
+private ListBox BuildCarList()
+{
+    _carList = new ListBox();
+
+    _carList.SelectionChanged += (_, _) =>
+    {
+        if (_carList.SelectedItem is Car car)
+        {
+            _carCustomer.SelectedItem =
+                Manager.Customers.FirstOrDefault(
+                    x => x.Id == car.CustomerId);
+
+            _carMake.Text = car.Make;
+            _carModel.Text = car.Model;
+            _carYear.Text = car.Year.ToString();
+            _carVin.Text = car.Vin;
+            _carLicense.Text = car.LicensePlate;
+            _carMileage.Text = car.Mileage.ToString();
+        }
+    };
+
+    return _carList;
+}
+
+
 
     private Control BuildOrdersTab()
 {
